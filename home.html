@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Cloud Manager</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+	<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
+</head>
+<style type="text/css">
+body {
+	padding-top: 60px;
+}
+
+a {
+	cursor: pointer;
+}
+
+.fa {
+	margin-right: 10px;
+}
+
+audio {
+	min-width: 100%;
+}
+</style>
+
+<body>
+	<!-- Wrap all page content here -->
+	<div id="container">
+		<!-- Fixed navbar -->
+		<div class="row col-lg-12 col-xs-12 col-sm-12 navbar navbar-inverse navbar-fixed-top">
+			<div class="navbar-header">
+				<a class="navbar-brand" onclick="getRootDir()">Cloud Manager</a>
+			</div>
+		</div>
+		<div class="row col-lg-12" style="text-align: center;margin-bottom: 20px">
+			<form id="urlUploadForm" class="form-inline" role="form">
+				<div class="visible-xs-block">
+					<div class=" col-xs-1"></div>
+				</div>
+				<div class="input-group col-xs-10 col-sm-4 col-md-5 col-lg-4">
+					<input type="text" placeholder="URL" class="form-control" id="urlUploadFormurl" name="url"></input>
+				</div>
+				<div class="visible-xs-block">
+					<div class=" col-xs-1"></div>
+				</div>
+				<div class="input-group col-xs-10 col-sm-4 col-md-4 col-lg-2">
+					<input type="text" placeholder="File Name" class="form-control" id="urlUploadFormfileName" name="fileName"></input>
+				</div>
+				<div class="visible-xs-block">
+					<div class=" col-xs-1"></div>
+				</div>
+				<div class="input-group col-xs-10 col-sm-3 col-md-2 col-lg-1">
+					<select class="form-control" id="urlUploadFormtype" name="type">
+						<option value="URL" selected="">URL</option>
+						<option value="YOUTUBE">YOUTUBE</option>
+						<option value="TORRENT">TORRENT</option>
+					</select>
+				</div>
+				<div class="visible-sm-block visible-xs-block">
+					<div class="clearfix"></div>
+					<br>
+				</div>
+				<div class="visible-xs-block">
+					<div class="col-xs-1"></div>
+				</div>
+				<div class="input-group col-xs-10 col-sm-4 col-md-1 col-lg-1">
+					<input type="button" value="Upload" name="submit" onclick="uploadUrl()" class="btn btn-success">
+				</div>
+			</form>
+		</div>
+		<div class="col-lg-12 col-xs-12 col-sm-12">
+			<ol class="breadcrumb" id="menu">
+				<li><a href="#">ROOT</a></li>
+			</ol>
+			<div class="list-group" id="list">
+			</div>
+		</div>
+		<!--Footer -->
+		<div class="row col-lg-12 navbar navbar-fixed-bottom vcenter text-center" style="padding-top:10px" id="footer">
+		</div>
+	</div>
+</body>
+<script type="text/javascript">
+var rootDir;
+var currentDir;
+var activeElement;
+var showHiddenFiles = false;
+
+window.onload = function() {
+	getRootDir();
+}
+
+function getRootDir() {
+	var xhr = getXMLHTTP();
+	xhr.open('GET', "rootDir");
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4 && xhr.status == 200) {
+			rootDir = xhr.responseText;
+			currentDir = xhr.responseText;
+			openDir(rootDir);
+		}
+	}
+	xhr.send();
+}
+String.prototype.replaceAll = function(search, replacement) {
+    var target = this;
+    return target.split(search).join(replacement);
+};
+function uploadUrl() {
+//	var form = document.getElementById("urlUploadForm");
+	var type = document.getElementById('urlUploadFormtype').value;
+	var fileName = document.getElementById('urlUploadFormfileName').value;
+	var url = document.getElementById('urlUploadFormurl').value;
+	var formData = new FormData();
+	formData.append('type', type);
+	formData.append('fileName', fileName);
+	formData.append('currentDir', currentDir);
+	console.log("old url ="+url);
+	url = encodeURIComponent(url);
+	console.log("new url ="+url);
+	formData.append('url', url);
+
+	var xhr = getXMLHTTP();
+	xhr.open('POST', "uploadUrl");
+	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4 && xhr.status == 200) {
+			updateFilesList(xhr.responseText);
+		}
+	}
+	xhr.send("type=" + type + "&fileName=" + fileName + "&currentDir=" + currentDir + "&url=" + url);
+//	xhr.send(formData);
+}
+
+function goBack() {
+	var xhr = getXMLHTTP();
+	xhr.open('POST', "parentName");
+	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4 && xhr.status == 200) {
+			updateFilesList(xhr.responseText);
+		}
+	}
+	xhr.send("path=" + currentDir);
+}
+
+function openDir(path) {
+	var currentDir = path;
+	var xhr = getXMLHTTP();
+	xhr.open('POST', "list");
+	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4 && xhr.status == 200) {
+			displayFilesList(xhr.responseText);
+		}
+	}
+	xhr.send("path=" + path);
+}
+
+function displayFilesList(files) {
+	files = JSON.parse(files);
+	var list = document.getElementById("list");
+	$(list).empty();
+	// First creating folders
+	for (var i = 0; i < files.length; i++) {
+		if (files[i].isDir == true) {
+			if (!showHiddenFiles && files[i].fileName.startsWith('.')) {
+				continue;
+			}
+			appendListItem(list, files[i], true);
+		}
+	}
+	// After that creating files
+	for (var i = 0; i < files.length; i++) {
+		if (files[i].isDir == false) {
+			appendListItem(list, files[i], false);
+		}
+	}
+	activeElement = list.firstChild;
+	if (activeElement != null) {
+		activeElement.setAttribute("class", "list-group-item active");
+	}
+}
+
+function appendListItem(list, file, isDir) {
+	var a, iEle, textNode;
+	a = document.createElement('a');
+	a.setAttribute('class', 'list-group-item');
+	a.setAttribute('isDir', isDir);
+	if (isDir) {
+		a.setAttribute('onclick', 'openDir("' + file.filePath + '")');
+	}
+	a.setAttribute('path', file.filePath);
+	iEle = document.createElement('i');
+	iEle.setAttribute('class', file.fileIcon);
+	textNode = document.createTextNode(file.fileName);
+	//	a.innerHTML = '<i class="fa fa-folder"></i>&nbsp;&nbsp;' + files[i].fileName;
+	a.appendChild(iEle);
+	a.appendChild(textNode);
+	list.appendChild(a);
+}
+
+function getXMLHTTP() { /* fuction to return the xml http object */
+	var xmlhttp = false;
+	try {
+		xmlhttp = new XMLHttpRequest();
+	} catch (e) {
+		try {
+			xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+		} catch (e1) {
+			try {
+				xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
+			} catch (e2) {
+				xmlhttp = false;
+			}
+		}
+	}
+	return xmlhttp;
+}
+</script>
+
+</html>
