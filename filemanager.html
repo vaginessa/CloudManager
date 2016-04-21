@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Music Player</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+</head>
+<style type="text/css">
+body {
+	padding-top: 60px;
+}
+html, body, #container {
+	height: 100% !important;
+}
+h3, html, body {
+	font-size: 16px;
+	font-family: ubuntu;
+	color: #444;
+}
+h3 {
+	font-weight: bold;
+	margin: 5px 0 5px 0;
+}
+ol {
+	padding-left: 10px;
+}
+li {
+	cursor: pointer;
+	padding-top: 5px;
+    list-style-type: none;
+}
+body{
+	padding-top: 50px;
+}
+
+i{
+	margin-right: 5px;
+}
+
+a {
+	cursor: pointer;
+}
+
+.fa {
+	margin-right: 10px;
+}
+
+audio {
+	min-width: 100%;
+}
+</style>
+
+<body>
+	<!-- Wrap all page content here -->
+	<div id="container">
+		<!-- Fixed navbar -->
+		<div class="row col-lg-12 col-xs-12 col-sm-12 navbar navbar-inverse navbar-fixed-top">
+			<div class="navbar-header">
+				<a class="navbar-brand" href="#" onclick="startNow()">Music Player</a>
+			</div>
+		</div>
+		<div style="min-height: 100%;width: 215px;float: left;background-color: #eee;border-right: 2px solid #ccc;padding-left: 20px;padding-right: 10px;padding-top: 10px;">
+			<h3>Bookmarks</h3>
+			<ol>
+				<li><i class="fa fa-folder"></i>My Name is Ashish</li>
+				<li><i class="fa fa-folder"></i>My Name is Ashish</li>
+				<li><i class="fa fa-folder"></i>My Name is Ashish</li>
+				<li><i class="fa fa-folder"></i>My Name is Ashish</li>
+			</ol>
+		</div>
+		<!-- Begin page content -->
+		<div style="margin-left: 350px;position: absolute;"class="col-lg-12 col-xs-12 col-sm-12">
+			<ol class="breadcrumb" id="menu">
+				<li><a href="#">My Music</a></li>
+			</ol>
+			<div class="list-group" id="list">
+			</div>
+		</div>
+		<!--Footer -->
+		<div class="row col-lg-12 navbar navbar-fixed-bottom vcenter text-center" style="padding-top:10px" id="footer">
+		</div>
+	</div>
+</body>
+<script type="text/javascript">
+var currentFolder = root;
+var stack = [];
+var activeElement;
+var currentPlayingIndex = 0;
+var activeElement, audio, source;
+window.onload = function() {
+	startNow();
+}
+
+function startNow() {
+	currentFolder = root;
+	stack = [];
+	activeElement;
+	createMenu();
+	createList();
+}
+
+function goBack(steps) {
+	console.log(stack);
+	var temp, i;
+	for (i = 0; i < steps && stack.length > 0; i++) {
+		currentFolder = stack.pop();
+	}
+	createMenu();
+	createList();
+}
+
+function createMenu() {
+	var menu, li, a, temp, i;
+
+	menu = document.getElementById('menu');
+	deleteAllChild(menu);
+	for (i = stack.length; i > 0; i--) {
+		li = document.createElement('li');
+		a = document.createElement('a');
+		a.innerHTML = stack[stack.length - i].fileName;
+		a.setAttribute('onclick', 'goBack(' + i + ')');
+		li.appendChild(a);
+		menu.appendChild(li);
+	}
+	//Adding last menu item or current opened folder
+	a = document.createElement('a');
+	a.innerHTML = currentFolder.fileName;
+	a.setAttribute("class", "active");
+	li = document.createElement('li');
+	li.appendChild(a);
+	menu.appendChild(li);
+}
+
+function createList() {
+	var a, iEle, textNode, files = currentFolder.files;
+	var list = document.getElementById("list");
+	deleteAllChild(list);
+	// First creating folders
+	for (var i = 0; i < files.length; i++) {
+		if (files[i].isDir == "true") {
+			a = document.createElement('a');
+			a.setAttribute('class', 'list-group-item');
+			a.setAttribute('isDir', files[i].isDir);
+			a.setAttribute('index', i);
+			a.setAttribute('onclick', 'openFolder(' + i + ')');
+			iEle = document.createElement('i');
+			iEle.setAttribute('class', 'fa fa-folder');
+			textNode = document.createTextNode(files[i].fileName);
+			//	a.innerHTML = '<i class="fa fa-folder"></i>&nbsp;&nbsp;' + files[i].fileName;
+			a.appendChild(iEle);
+			a.appendChild(textNode);
+			list.appendChild(a);
+		}
+	}
+	// After that creating files
+	for (var i = 0; i < files.length; i++) {
+		if (files[i].isDir == "false" &&
+			(files[i].fileName.endsWith(".mp3") || files[i].fileName.endsWith(".flac"))) {
+			a = document.createElement('a');
+			a.setAttribute('class', 'list-group-item');
+			a.setAttribute('isDir', files[i].isDir);
+			a.setAttribute('index', i);
+			a.setAttribute('onclick', 'playMusic(' + i + ')');
+			iEle = document.createElement('i');
+			iEle.setAttribute('class', 'fa fa-music');
+			textNode = document.createTextNode(files[i].fileName);
+			a.appendChild(iEle);
+			a.appendChild(textNode);
+			list.appendChild(a);
+		}
+	}
+	activeElement = list.firstChild;
+	if (activeElement != null) {
+		activeElement.setAttribute("class", "list-group-item active");
+	}
+}
+
+function openFolder(index) {
+	stack.push(currentFolder);
+	currentFolder = currentFolder.files[index];
+	createMenu();
+	createList();
+}
+
+function deleteAllChild(myNode) {
+	while (myNode.firstChild) {
+		myNode.removeChild(myNode.firstChild);
+	}
+}
+
+function playMusic(index) {
+
+	audio = document.createElement('audio');
+
+	var footer = document.getElementById('footer');
+	deleteAllChild(footer);
+	footer.appendChild(audio);
+	var source = document.createElement('source');
+	source.setAttribute("src", currentFolder.files[index].filePath);
+
+	audio.setAttribute('controls', '');
+	audio.appendChild(source);
+	audio.play();
+	currentPlayingIndex = index;
+	audio.addEventListener('ended', function() {
+		playNext();
+	}, false);
+}
+
+function playNext() {
+	playMusic(currentPlayingIndex + 1);
+}
+
+function playPrevious() {
+	playMusic(currentPlayingIndex - 1);
+}
+
+function selectNext() {
+	var nextElement = activeElement.nextSibling;
+	if (nextElement != null) {
+		activeElement.setAttribute("class", "list-group-item");
+		activeElement = nextElement;
+		activeElement.setAttribute("class", "list-group-item active");
+	}
+}
+
+function selectPrevious() {
+	var previousElement = activeElement.previousSibling;
+	if (previousElement != null) {
+		activeElement.setAttribute("class", "list-group-item");
+		activeElement = previousElement;
+		activeElement.setAttribute("class", "list-group-item active");
+	}
+}
+
+function openOrPlay() {
+	if (activeElement.getAttribute('isDir') == "true") {
+		openFolder(activeElement.getAttribute('index'));
+	} else {
+		playMusic(activeElement.getAttribute('index'));
+	}
+}
+document.onkeydown = function(e) {
+	e = e || window.event;
+	console.log(e.keyCode);
+
+	switch (e.which || e.keyCode) {
+		case 8: //backspace
+			goBack(1);
+			break;
+		case 13: //Enter
+			openOrPlay();
+			break;
+		case 32: // space
+			if (audio.paused) {
+				audio.play();
+			} else {
+				audio.pause();
+			}
+			break;
+		case 37: // left
+			if (e.ctrlKey) {
+				audio.volume -= 0.1;
+			} else {
+				audio.currentTime -= 10;
+			}
+			break;
+		case 38: // up
+			selectPrevious();
+			break;
+		case 39: // right
+			if (e.ctrlKey) {
+				audio.volume += 0.1;
+			} else {
+				audio.currentTime += 10;
+			}
+			break;
+		case 40: // down
+			selectNext();
+			break;
+		default:
+			return; // exit this handler for other keys
+	}
+	e.preventDefault(); // prevent the default action (scroll / move caret)
+}
+
+var root = {
+	"isDir": "true",
+	"fileName": "My Music",
+	"files": [{
+		"isDir": "true",
+		"fileName": "Movies",
+		"files": [{
+			"isDir": "false",
+			"fileName": "1 - Kabhi Jo Baadal Barse - Jackpot - [SongsPk.CC].mp3",
+			"filePath": "/d/My Documents/My Music/Movies/1 - Kabhi Jo Baadal Barse - Jackpot - [SongsPk.CC].mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Aacha sila diya tune mere pyaar ka.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Aacha sila diya tune mere pyaar ka.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Aashiq Banaya Aapne Title Song.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Aashiq Banaya Aapne Title Song.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Agar Tum Mil Jao - Zeher.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Agar Tum Mil Jao - Zeher.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Akhiyon Ke Jharokon Se.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Akhiyon Ke Jharokon Se.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Baadshah.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Baadshah.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Baharo phool barsao.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Baharo phool barsao.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Ban Than Chali.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Ban Than Chali.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Banna Re Baagama.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Banna Re Baagama.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Bhula Denge Tumko - Humko Deewana Kar Gaye.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Bhula Denge Tumko - Humko Deewana Kar Gaye.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Border - To chalu.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Border - To chalu.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Bure Bure - Bluffmaster.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Bure Bure - Bluffmaster.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Chudi jo khanke haatho mein.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Chudi jo khanke haatho mein.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Dard Dilo Ke.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Dard Dilo Ke.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Desi Girl - Dostana.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Desi Girl - Dostana.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Dil Deewana Na Jaane.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Dil Deewana Na Jaane.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Dil To Bacha Hai ji - Ishqiya.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Dil To Bacha Hai ji - Ishqiya.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Dilli ki sardi.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Dilli ki sardi.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Mehbooba Mehbooba - Ajnabee.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Mehbooba Mehbooba - Ajnabee.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Mera geet amar kardo.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Mera geet amar kardo.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Mere Dholna - Bhul Bhulaiyaa.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Mere Dholna - Bhul Bhulaiyaa.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Mohra.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Mohra.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Mujhe Neend Na Aaye - Dil.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Mujhe Neend Na Aaye - Dil.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Muqabala-Muqabala-(Humse-Hai-Muqabala).mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Muqabala-Muqabala-(Humse-Hai-Muqabala).mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Nadiya ke paar.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Nadiya ke paar.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Payaliya Hohoho.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Payaliya Hohoho.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Raaj 2 - Maahi.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Raaj 2 - Maahi.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Rang de rang de-Takshak.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Rang de rang de-Takshak.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Sau Dard Hai- Jaan-E-Maan.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Sau Dard Hai- Jaan-E-Maan.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Sawan Ko Aane Do.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Sawan Ko Aane Do.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Subha Hone Na De - Desi Boyz.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Subha Hone Na De - Desi Boyz.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Tere Liye - Prince.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Tere Liye - Prince.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Tu Meri Dost Hain.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Tu Meri Dost Hain.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Hai Meri Saanson mein mere piya.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Hai Meri Saanson mein mere piya.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Hosh Walon Ko Khabar Kya.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Hosh Walon Ko Khabar Kya.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Jaane Kyun - Dostana.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Jaane Kyun - Dostana.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Jane kaha Gaye wo din.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Jane kaha Gaye wo din.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Jhanjhariya.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Jhanjhariya.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "kahi depp jale kahi dil - Bees saal baad.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/kahi depp jale kahi dil - Bees saal baad.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Kajrare Kajrare.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Kajrare Kajrare.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Karle Baby Dance Vance - Hello.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Karle Baby Dance Vance - Hello.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Khabar Nhi - Dostana.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Khabar Nhi - Dostana.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Kiya Kiya - Welcome.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Kiya Kiya - Welcome.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Koyal Si Teri Boli - Beta.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Koyal Si Teri Boli - Beta.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Krishna cottage.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Krishna cottage.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Kuch Kam - Dostana.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Kuch Kam - Dostana.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Kuch_Is_Tarah_Teri_Palkein_Meri_Palkon_Se_Mila_De_(lovely)_-_Own_Editing.flv.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Kuch_Is_Tarah_Teri_Palkein_Meri_Palkon_Se_Mila_De_(lovely)_-_Own_Editing.flv.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "kyun aaj kal neend kam khwaab jyada hai.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/kyun aaj kal neend kam khwaab jyada hai.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Twist - Love Aaj Kal.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Twist - Love Aaj Kal.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Ud Ud Ud Ud Jaye.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Ud Ud Ud Ud Jaye.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Yaariyan - Sunny Sunny.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Yaariyan - Sunny Sunny.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Yeh Dil Deewana - Pardes.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Yeh Dil Deewana - Pardes.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Dilliwaali Girlfriend - Ye Jawani Hai Deewani",
+			"filePath": "/d/My Documents/My Music/Movies/Dilliwaali Girlfriend - Ye Jawani Hai Deewani"
+		}, {
+			"isDir": "true",
+			"fileName": "London Dreams",
+			"files": [{
+				"isDir": "false",
+				"fileName": "AlbumArtSmall.jpg",
+				"filePath": "/d/My Documents/My Music/Movies/London Dreams/AlbumArtSmall.jpg"
+			}, {
+				"isDir": "false",
+				"fileName": "Folder.jpg",
+				"filePath": "/d/My Documents/My Music/Movies/London Dreams/Folder.jpg"
+			}, {
+				"isDir": "false",
+				"fileName": "London Dreams - Back.jpg",
+				"filePath": "/d/My Documents/My Music/Movies/London Dreams/London Dreams - Back.jpg"
+			}, {
+				"isDir": "false",
+				"fileName": "London Dreams - Front.jpg",
+				"filePath": "/d/My Documents/My Music/Movies/London Dreams/London Dreams - Front.jpg"
+			}, {
+				"isDir": "false",
+				"fileName": "[Songs.PK] London Dreams - 01 - Barson Yaaron.mp3",
+				"filePath": "/d/My Documents/My Music/Movies/London Dreams/[Songs.PK] London Dreams - 01 - Barson Yaaron.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "[Songs.PK] London Dreams - 02 - Man Ko Ati Bhavey.mp3",
+				"filePath": "/d/My Documents/My Music/Movies/London Dreams/[Songs.PK] London Dreams - 02 - Man Ko Ati Bhavey.mp3"
+			}]
+		}, {
+			"isDir": "false",
+			"fileName": "Tum Hi Ho Meri - Aashiqui.mp3",
+			"filePath": "/d/My Documents/My Music/Movies/Tum Hi Ho Meri - Aashiqui.mp3"
+		}]
+	}, {
+		"isDir": "true",
+		"fileName": "Album",
+		"files": [{
+			"isDir": "false",
+			"fileName": "Aankhon Mein Tera Hi Chehra.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Aankhon Mein Tera Hi Chehra.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Amplifier.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Amplifier.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Bewafa - Imran Khan.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Bewafa - Imran Khan.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Jogi Hum To Lut Gaye Tere Pyaar Mein.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Jogi Hum To Lut Gaye Tere Pyaar Mein.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Koi Khwab Mein Roz Aata Hai - Alka Yagni.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Koi Khwab Mein Roz Aata Hai - Alka Yagni.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Maine Payal Hai Chankai.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Maine Payal Hai Chankai.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Man Mera.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Man Mera.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Chilam Tambaku Ko Dabba.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Chilam Tambaku Ko Dabba.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Chupke Chupke  Sakhion Se Woh.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Chupke Chupke  Sakhion Se Woh.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Deewane To Deewane Hai - Shweta Shetty.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Deewane To Deewane Hai - Shweta Shetty.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Dholna - Arbaaz Khan, Malaika Arora.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Dholna - Arbaaz Khan, Malaika Arora.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Pher Milade Ram - Naya Lifafa.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Pher Milade Ram - Naya Lifafa.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Sawan Mein Lag Gayi Aag - Mika Singh.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Sawan Mein Lag Gayi Aag - Mika Singh.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Taare Gin Gin - Sukhbir.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Taare Gin Gin - Sukhbir.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Tera Chehra Jab Nazar  - Adnan Sami.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Tera Chehra Jab Nazar  - Adnan Sami.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "The Lost Life Song - A-Kay.mp3",
+			"filePath": "/d/My Documents/My Music/Album/The Lost Life Song - A-Kay.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Tum to thehre pardesi.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Tum to thehre pardesi.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Bombay Vikings-woh chali.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Bombay Vikings-woh chali.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Hat Ja Tau Pache Ne - Naya Lifafa.mp3",
+			"filePath": "/d/My Documents/My Music/Album/Hat Ja Tau Pache Ne - Naya Lifafa.mp3"
+		}]
+	}, {
+		"isDir": "true",
+		"fileName": "English",
+		"files": [{
+			"isDir": "false",
+			"fileName": "Katy Perry - Firework.mp3",
+			"filePath": "/d/My Documents/My Music/English/Katy Perry - Firework.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Akon - Smack That.mp3",
+			"filePath": "/d/My Documents/My Music/English/Akon - Smack That.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Barbie Girl.mp3",
+			"filePath": "/d/My Documents/My Music/English/Barbie Girl.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Carly Rae Jepsen - Call Me Maybe.mp3",
+			"filePath": "/d/My Documents/My Music/English/Carly Rae Jepsen - Call Me Maybe.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Charli XCX-Red Balloon.mp3",
+			"filePath": "/d/My Documents/My Music/English/Charli XCX-Red Balloon.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Enrique Tonight I am loving you.mp3",
+			"filePath": "/d/My Documents/My Music/English/Enrique Tonight I am loving you.mp3"
+		}, {
+			"isDir": "true",
+			"fileName": "Kary Pete - Teenage Dreams",
+			"files": [{
+				"isDir": "false",
+				"fileName": "01.Teenage Dream.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/01.Teenage Dream.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "02.Last Friday Night (T.G.I.F.).flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/02.Last Friday Night (T.G.I.F.).flac"
+			}, {
+				"isDir": "false",
+				"fileName": "03.California Gurls (Feat. Snoop Dogg).flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/03.California Gurls (Feat. Snoop Dogg).flac"
+			}, {
+				"isDir": "false",
+				"fileName": "04.Firework.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/04.Firework.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "05.Peacock.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/05.Peacock.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "06.Circle The Drain.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/06.Circle The Drain.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "07.The One That Got Away.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/07.The One That Got Away.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "08.E.T..flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/08.E.T..flac"
+			}, {
+				"isDir": "false",
+				"fileName": "09.Who Am I Living For.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/09.Who Am I Living For.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "10.Pearl.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/10.Pearl.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "11.Hummingbird Heartbeat.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/11.Hummingbird Heartbeat.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "12.Not Like The Movies.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/12.Not Like The Movies.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "13.The One That Got Away (Acoustic).flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/13.The One That Got Away (Acoustic).flac"
+			}, {
+				"isDir": "false",
+				"fileName": "15.Wide Awake.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/15.Wide Awake.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "16.Dressin' Up.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/16.Dressin' Up.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "17.E.T. (Feat. Kanye West).flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/17.E.T. (Feat. Kanye West).flac"
+			}, {
+				"isDir": "false",
+				"fileName": "18.Last Friday Night (T.G.I.F.) (Feat. Missy Elliott).flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/18.Last Friday Night (T.G.I.F.) (Feat. Missy Elliott).flac"
+			}, {
+				"isDir": "false",
+				"fileName": "19.Tommie Sunshine's Megasix Smash-Up.flac",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/19.Tommie Sunshine's Megasix Smash-Up.flac"
+			}, {
+				"isDir": "false",
+				"fileName": "front.jpg",
+				"filePath": "/d/My Documents/My Music/English/Kary Pete - Teenage Dreams/front.jpg"
+			}]
+		}, {
+			"isDir": "false",
+			"fileName": "Katy Perry - E.T. ft. Kanye West.mp3",
+			"filePath": "/d/My Documents/My Music/English/Katy Perry - E.T. ft. Kanye West.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Ke$ha - TiK ToK.mp3",
+			"filePath": "/d/My Documents/My Music/English/Ke$ha - TiK ToK.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Lady Gaga - Bad Romance.mp3",
+			"filePath": "/d/My Documents/My Music/English/Lady Gaga - Bad Romance.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Lenka - Everything At Once.mp3",
+			"filePath": "/d/My Documents/My Music/English/Lenka - Everything At Once.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Miley Cyrus - Wrecking Ball.mp3",
+			"filePath": "/d/My Documents/My Music/English/Miley Cyrus - Wrecking Ball.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Miley Cyrus We Can't Stop.mp3",
+			"filePath": "/d/My Documents/My Music/English/Miley Cyrus We Can't Stop.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Put It Down On Me.mp3",
+			"filePath": "/d/My Documents/My Music/English/Put It Down On Me.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Ricky Martin - Livin la vida loca.mp3",
+			"filePath": "/d/My Documents/My Music/English/Ricky Martin - Livin la vida loca.mp3"
+		}, {
+			"isDir": "true",
+			"fileName": "Selena Gomez",
+			"files": [{
+				"isDir": "false",
+				"fileName": "Selena Gomez  The Scene - Magic.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez  The Scene - Magic.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez & The Scene - Hit The Lights.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez & The Scene - Hit The Lights.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez & The Scene - Who Says [mp3clan.com].mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez & The Scene - Who Says [mp3clan.com].mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Everything Is Not As It Seems (Series Theme Song).mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez - Everything Is Not As It Seems (Series Theme Song).mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Slow Down.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez - Slow Down.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez ft. The Scene - A Year Without Rain.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez ft. The Scene - A Year Without Rain.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez Shake Up.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez Shake Up.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez The Scene Love You Like A Love Song.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez/Selena Gomez The Scene Love You Like A Love Song.mp3"
+			}]
+		}, {
+			"isDir": "true",
+			"fileName": "Selena Gomez - Star Dance",
+			"files": [{
+				"isDir": "false",
+				"fileName": "Selena Gomez - B.E.A.T.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - B.E.A.T.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Birthday.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Birthday.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Come & Get It.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Come & Get It.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Forget Forever.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Forget Forever.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Like a Champion.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Like a Champion.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Love Will Remember.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Love Will Remember.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Music Feels Better.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Music Feels Better.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Save the Day.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Save the Day.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Slow Down.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Slow Down.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Stars Dance.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Stars Dance.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Undercover.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Undercover.mp3"
+			}, {
+				"isDir": "false",
+				"fileName": "Selena Gomez - Write Your Name.mp3",
+				"filePath": "/d/My Documents/My Music/English/Selena Gomez - Star Dance/Selena Gomez - Write Your Name.mp3"
+			}]
+		}, {
+			"isDir": "false",
+			"fileName": "Titanic.mp3",
+			"filePath": "/d/My Documents/My Music/English/Titanic.mp3"
+		}]
+	}, {
+		"isDir": "true",
+		"fileName": "New",
+		"files": [{
+			"isDir": "false",
+			"fileName": "A+Sky+Full+of+Stars_2701336.mp3",
+			"filePath": "/d/My Documents/My Music/New/A+Sky+Full+of+Stars_2701336.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Animals_2606292.mp3",
+			"filePath": "/d/My Documents/My Music/New/Animals_2606292.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Bailando+%28English+Version%29_2515137.mp3",
+			"filePath": "/d/My Documents/My Music/New/Bailando+%28English+Version%29_2515137.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Bang+Bang_2689995.mp3",
+			"filePath": "/d/My Documents/My Music/New/Bang+Bang_2689995.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Calvin-Harris-feat.-Ellie-Goulding-Outside-Audio-ft.-Ellie-Goulding.mp3",
+			"filePath": "/d/My Documents/My Music/New/Calvin-Harris-feat.-Ellie-Goulding-Outside-Audio-ft.-Ellie-Goulding.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Love+Me+Harder_2605064.mp3",
+			"filePath": "/d/My Documents/My Music/New/Love+Me+Harder_2605064.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Maps_2606291.mp3",
+			"filePath": "/d/My Documents/My Music/New/Maps_2606291.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Rather+Be_2701342.mp3",
+			"filePath": "/d/My Documents/My Music/New/Rather+Be_2701342.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Uptown+Funk_3749787.mp3",
+			"filePath": "/d/My Documents/My Music/New/Uptown+Funk_3749787.mp3"
+		}]
+	}, {
+		"isDir": "true",
+		"fileName": "Rajasthani",
+		"files": [{
+			"isDir": "false",
+			"fileName": "Bajuda re Loom.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Bajuda re Loom.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Balam+Choto+So_2413399.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Balam+Choto+So_2413399.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Banna+Re+Bago+Me+Jula_2413394.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Banna+Re+Bago+Me+Jula_2413394.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Chand+Chadyo+Gignar_2413397.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Chand+Chadyo+Gignar_2413397.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Chirmi.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Chirmi.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Ghoomar.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Ghoomar.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Ghumerdar Lanjo.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Ghumerdar Lanjo.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Naina Ra Lobhi.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Naina Ra Lobhi.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Pallo Latke.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Pallo Latke.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Piu Piu Bole Piya Moryo.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Piu Piu Bole Piya Moryo.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Unco+Galyo+Palno_2413400.mp3",
+			"filePath": "/d/My Documents/My Music/Rajasthani/Unco+Galyo+Palno_2413400.mp3"
+		}]
+	}, {
+		"isDir": "true",
+		"fileName": "Shyam",
+		"files": [{
+			"isDir": "false",
+			"fileName": "Raat Sham Sapne Mien Aaye.mp3",
+			"filePath": "/d/My Documents/My Music/Shyam/Raat Sham Sapne Mien Aaye.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Shyam chudi Bhechne Aya.mp3",
+			"filePath": "/d/My Documents/My Music/Shyam/Shyam chudi Bhechne Aya.mp3"
+		}, {
+			"isDir": "false",
+			"fileName": "Shyama aan baso vrindavan main.mp3",
+			"filePath": "/d/My Documents/My Music/Shyam/Shyama aan baso vrindavan main.mp3"
+		}]
+	}]
+}
+</script>
+
+</html>
